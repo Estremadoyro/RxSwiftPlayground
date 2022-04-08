@@ -139,10 +139,13 @@ class ViewModel {
   func createSourceObservable() -> Observable<Int> {
     return Observable.create { observer in
       print("Creating new observable")
-      print("Observable new value")
-      observer.onNext(10)
-      observer.onCompleted()
-      print("Observable sequence completed")
+      // Without an Async call, the Observable lifecycle will run instantly, hence .shared() will never find the Observable in mid lifecycle execution
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        print("Observable new value")
+        observer.onNext(10)
+        observer.onCompleted()
+        print("Observable sequence completed")
+      }
       return Disposables.create()
     }
   }
@@ -169,5 +172,46 @@ class Monopoly {
   }
 }
 
-let a = Monopoly()
-a.configureBindings()
+// let a = Monopoly()
+// a.configureBindings()
+
+enum ErrorType: Error {
+  case error1, error2
+}
+
+func run5() {
+  // Empty observable
+  let emptyObservable = Observable<Void>.empty()
+  emptyObservable.subscribe(onNext: { _ in
+    print("Will never emit a value")
+  }, onCompleted: {
+    print("Will only Complete")
+  })
+
+  // Endless observable (never completes or emits a value)
+  let neverObservable = Observable<Void>.never()
+  neverObservable.subscribe(onNext: { _ in
+    print("Never emits onNext()")
+  }, onCompleted: {
+    print("Never completes")
+  }, onDisposed: {
+    print("Never released memory")
+  })
+
+  let rangeObservable = Observable<Int>.range(start: 1, count: 10)
+  let singleObservable = Single<String>.create { observer in
+    observer(.success("Success owo"))
+    observer(.failure(ErrorType.error1))
+  }
+  let completableObservable = Completable.create { observer in
+    observer(.completed)
+    observer(.error(ErrorType.error2))
+  }
+  let maybeObservable = Maybe<String>.create(subscribe: { observer in
+    observer(.error(ErrorType.error1))
+    observer(.success("Success owo maybe"))
+    observer(.completed)
+  })
+}
+
+run5()
