@@ -179,6 +179,7 @@ enum ErrorType: Error {
   case error1, error2
 }
 
+/// # Observable Types & Traits
 func run5() {
   // Empty observable
   let emptyObservable = Observable<Void>.empty()
@@ -202,16 +203,108 @@ func run5() {
   let singleObservable = Single<String>.create { observer in
     observer(.success("Success owo"))
     observer(.failure(ErrorType.error1))
+    return Disposables.create()
   }
   let completableObservable = Completable.create { observer in
     observer(.completed)
     observer(.error(ErrorType.error2))
+    return Disposables.create()
   }
   let maybeObservable = Maybe<String>.create(subscribe: { observer in
     observer(.error(ErrorType.error1))
     observer(.success("Success owo maybe"))
     observer(.completed)
+    return Disposables.create()
   })
 }
 
-run5()
+// run5()
+
+/// # Subjects
+/// Work as both Observables & Observers
+func run6() {
+  // PublishSubject
+  let subject1 = PublishSubject<String>()
+  let subject2 = BehaviorSubject(value: "1")
+  let subject3 = ReplaySubject<String>.create(bufferSize: 10)
+}
+
+// run6()
+
+func run7() {
+  let behaviorSubject: BehaviorSubject<String> = BehaviorSubject(value: "1")
+  behaviorSubject.onNext("2")
+  behaviorSubject.subscribe(onNext: { value in
+    print("next value: \(value)")
+  })
+}
+
+// run7()
+
+func run8() {
+  let subject = PublishSubject<String>()
+  // Subject didn't catch this sequence value as it wasn't subscribed to it just yet.
+  subject.onNext("Is anyone listening?")
+
+  let subscriptionOne = subject
+    .subscribe(onNext: { value in
+      print("value: \(value)")
+    })
+
+  subject.on(.next("1"))
+  subject.onNext("2")
+
+  let subscriptionTwo = subject
+    .subscribe { event in
+      // Event contain the Emitted element from onNext events
+      print("value: 2)", event.element ?? event)
+    }
+  subject.onNext("3")
+
+  // Termine the subscriptionOne
+  subscriptionOne.dispose()
+
+  subject.onNext("4")
+
+  // Stop Event, Observable Sequence completed
+  subject.onCompleted()
+
+  // Will not be emitted to its Subscribers
+  subject.onNext("5")
+
+  // Subsciption released
+  subscriptionTwo.dispose()
+
+  let disposeBag = DisposeBag()
+
+  // subscriptionThree
+  subject
+    .subscribe { event in
+      print("value: 3)", event.element ?? event)
+    }
+    .disposed(by: disposeBag)
+
+  subject.onNext("?")
+
+  // Will be emited as "completed" events, regardless of the value passed in, if the Sequence has already completed.
+  // subject.onNext("5") -> for subscriptionTwo
+  // subject.onNext("?") -> for subscriptionThree
+}
+
+// run8()
+
+func run9() {
+  let subject = BehaviorSubject(value: "1")
+  let subscriber1 = subject.subscribe(onNext: { value in
+    print("value: \(value)")
+  })
+  
+  // Can only set buffer size at create()
+  let replay = ReplaySubject<String>.create(bufferSize: 2)
+  let a = ReplaySubject<Int>.create { observer in
+    observer.onNext(1)
+    return Disposables.create()
+  }
+}
+
+run9()
